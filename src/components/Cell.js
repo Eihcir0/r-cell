@@ -7,22 +7,32 @@ const ALPHA = ' abcdefghijklmnopqrstuvwxyz'.split('')
  * Cell represents the atomic element of a table
  */
 export default class Cell extends Component {
+    static propTypes = {
+        executeFormula: PropTypes.func.isRequired,
+        onChangedValue: PropTypes.func.isRequired,
+        onChangedSelected: PropTypes.func.isRequired,
+        x: PropTypes.number.isRequired,
+        y: PropTypes.number.isRequired,
+        value: PropTypes.string.isRequired,
+        selected: PropTypes.bool,
+    }
+
+    static defaultProps = {
+        selected: false,
+    }
+
+
     state = {
         editing: false,
         value: this.props.value,
     }
 
     
-    /**
-     * Add listener to the `unselectAll` event used to broadcast the
-     * unselect all event
-     */
     componentDidMount() {
-        this.display = this.determineDisplay({ x: this.props.x, y: this.props.y },this.props.value)
+        this.display = this.determineDisplayValue({ x: this.props.x, y: this.props.y },this.props.value)
         this.timer = 0
         this.delay = 5
         this.prevent = false
-        window.document.addEventListener('unselectAll', this.handleUnselectAll)
     }
 
     /**
@@ -32,16 +42,8 @@ export default class Cell extends Component {
      * that this might depend upon
      */
     componentWillUpdate() {
-        this.display = this.determineDisplay(
+        this.display = this.determineDisplayValue(
             { x: this.props.x, y: this.props.y }, this.state.value)
-    }
-
-    /**
-     * Remove the `unselectAll` event listener added in
-     * `componentDidMount()`
-     */
-    componentWillUnmount() {
-        window.document.removeEventListener('unselectAll', this.handleUnselectAll)
     }
 
     /**
@@ -50,7 +52,7 @@ export default class Cell extends Component {
     */
     shouldComponentUpdate(nextProps, nextState) {
         // Has a formula value? could be affected by any change. Update
-        if (this.state.value !== '' && // why would it ever be '' ??????  ADFJLAKDFLADFLADFKJADFLKJ
+        if (this.state.value !== '' &&
             this.state.value.slice(0, 1) === '=') {
             return true
         }
@@ -59,7 +61,7 @@ export default class Cell extends Component {
         // Its own value prop changed? Update
         if (nextState.value !== this.state.value ||
             nextState.editing !== this.state.editing ||
-            nextState.selected !== this.state.selected ||
+            nextProps.selected !== this.props.selected ||
             nextProps.value !== this.props.value) {
             return true
         }
@@ -67,14 +69,13 @@ export default class Cell extends Component {
         return false
     }
 
-
     /**
      * When a Cell value changes, re-determine the display value
      * by calling the formula calculation
      */
     onChange = (e) => {
         this.setState({ value: e.target.value })
-        this.display = this.determineDisplay({ x: this.props.x, y: this.props.y }, e.target.value)
+        this.display = this.determineDisplayValue({ x: this.props.x, y: this.props.y }, e.target.value)
     }
 
     /**
@@ -104,40 +105,21 @@ export default class Cell extends Component {
     }
 
     /**
-     * Used by `componentDid(Un)Mount`, handles the `unselectAll`
-     * event response
-     */
-    handleUnselectAll = () => {
-        if (this.state.selected || this.state.editing) {
-            this.setState({ selected: false, editing: false })
-        }
-    }
-
-    /**
      * Called by the `onBlur` or `onKeyPressOnInput` event handlers,
      * it escalates the value changed event, and restore the editing
      * state to `false`.
      */
     hasNewValue = (value) => {
-        this.props.onChangedValue(
-            {
-                x: this.props.x,
-                y: this.props.y,
-            },
-            value,
-        )
+        const { x, y } = this.props
+        this.props.onChangedValue({ x, y }, value)
         this.setState({ editing: false })
     }
 
-    /**
-     * Emits the `unselectAll` event, used to tell all the other
-     * cells to unselect
-     */
-    emitUnselectAllEvent = () => {
-        const unselectAllEvent = new Event('unselectAll')
-        window.document.dispatchEvent(unselectAllEvent)
+    setSelected = (value) => {
+        const { x, y } = this.props
+        this.props.onChangedSelected({ x, y }, value)
     }
-
+    
     /**
      * Handle clicking a Cell.
      */
@@ -145,10 +127,8 @@ export default class Cell extends Component {
         // Prevent click and double click to conflict
         this.timer = setTimeout(() => {
             if (!this.prevent) {
-                // Unselect all the other cells and set the current
-                // Cell state to `selected`
-                this.emitUnselectAllEvent()
-                this.setState({ selected: true })
+                this.setSelected(true)
+                this.setState({ editing: false })
             }
             this.prevent = false
         }, this.delay)
@@ -161,14 +141,11 @@ export default class Cell extends Component {
         // Prevent click and double click to conflict
         clearTimeout(this.timer)
         this.prevent = true
-
-        // Unselect all the other cells and set the current
-        // Cell state to `selected` & `editing`
-        this.emitUnselectAllEvent()
-        this.setState({ editing: true, selected: true })
+        this.setSelected(true)
+        this.setState({ editing: true })
     }
 
-    determineDisplay = ({ x, y }, value) => {
+    determineDisplayValue = ({ x, y }, value) => {
         if (value.slice(0, 1) === '=') {
             const res = this.props.executeFormula({ x, y }, value.slice(1))
         if (res.error !== null) return 'INVALID'
@@ -234,7 +211,7 @@ export default class Cell extends Component {
       if (this.props.x === 0) return this.headerColumnCell(css)
       if (this.props.y === 0) return this.headerRowCell(css)
 
-      if (this.state.selected) {
+      if (this.props.selected) {
           css.outlineColor = 'lightblue'
           css.outlineStyle = 'dotted'
       }
@@ -264,12 +241,4 @@ export default class Cell extends Component {
           </span>
       )
     }
-}
-
-Cell.propTypes = {
-    executeFormula: PropTypes.func.isRequired,
-    onChangedValue: PropTypes.func.isRequired,
-    x: PropTypes.number.isRequired,
-    y: PropTypes.number.isRequired,
-    value: PropTypes.string.isRequired,
 }

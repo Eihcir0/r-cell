@@ -13,11 +13,56 @@ export default class Table extends Component {
     }
     
     state = {
-        data: {}
+        values: {},
+        selected: { 1: { 1: true }},
+        
     }
 
     componentDidMount() {
         this.initializeCells()
+        window.addEventListener('keydown', this.keydown.bind(this))
+    }
+
+    keydown = (e) => {
+        console.log(e.keyCode)
+        switch (e.keyCode) {
+            case 37:
+                e.preventDefault()
+                this.moveCursor(-1, 0)                
+                break;        
+            case 38:
+                e.preventDefault()
+                this.moveCursor(0, -1)                
+                break;        
+            case 39:
+                e.preventDefault()
+                this.moveCursor(1, 0)                
+                break;        
+            case 40:
+                e.preventDefault()
+                this.moveCursor(0, 1)                
+                break;        
+            default:
+                break;
+        }
+    }
+
+    selectedArray = () => {
+        const y = Object.keys(this.state.selected)[0]
+        const x = Object.keys(this.state.selected[y])[0]
+        return [x, y]
+    }
+
+    moveCursor = (xDiff, yDiff) => {
+        console.log(xDiff, yDiff);
+        
+        const [oldX, oldY] = this.selectedArray()
+        console.log(oldX, oldY)
+        const [x, y] = [(parseInt(oldX) + parseInt(xDiff)), (parseInt(oldY) + parseInt(yDiff))]
+        console.log(x,y);
+        // check valid new pos
+        this.handleChangedCellSelected({ x, y }, true)
+
     }
 
     getCellValue = (cellCoord, done) => {
@@ -34,12 +79,12 @@ export default class Table extends Component {
             throw this.parser.Error(this.parser.ERROR_REF)
         }
 
-        if (!this.state.data[y] || !this.state.data[y][x]) {
+        if (!this.state.values[y] || !this.state.values[y][x]) {
             return done('')
         }
 
         // All fine
-        return done(this.state.data[y][x])
+        return done(this.state.values[y][x])
     }
 
     getRangeValue = (startCellCoord, endCellCoord, done) => {
@@ -50,23 +95,23 @@ export default class Table extends Component {
         const fragment = []
 
         for (let y = sy; y <= ey; y += 1) {
-            const row = this.state.data[y]
+            const row = this.state.values[y]
             if (!row) continue
             
             const colFragment = []
             for (let x = sx; x <= ex; x += 1) {
-                let value = row[x] || ''
-                if (value.slice(0, 1) === '=') {
-                    const res = this.executeFormula({ x, y }, value.slice(1))
+                let values = row[x] || ''
+                if (values.slice(0, 1) === '=') {
+                    const res = this.executeFormula({ x, y }, values.slice(1))
                     if (res.error) throw this.parser.Error(res.error)
-                    value = res.result
+                    values = res.result
                 }
-                colFragment.push(value)
+                colFragment.push(values)
             }
             fragment.push(colFragment)
         }
 
-        done(fragment)
+        done(fragment)  /// Did I do this??
         // if (fragment) {
         //     done(fragment)
         // }
@@ -84,11 +129,17 @@ export default class Table extends Component {
         this.parser.on('callRangeValue', this.getRangeValue)
     }
 
-    handleChangedCell = ({ x, y }, value) => {
-        const data = { ...this.state.data }
-        if (!data[y]) data[y] = {}
-        data[y][x] = value
-        this.setState({ data})
+    handleChangedCellValue = ({ x, y }, newValue) => {
+        const values = { ...this.state.values }
+        if (!values.hasOwnProperty(y)) values[y] = {}
+        values[y][x] = newValue
+        this.setState({ values })
+    }
+
+    handleChangedCellSelected = ({ x, y }, newSelected) => {
+        const selected = {}
+        selected[y] = {[x]: newSelected}
+        this.setState({ selected })
     }
 
     updateCells = () => {
@@ -118,16 +169,19 @@ export default class Table extends Component {
     render() {
         const rows = []
         for (let y = 0; y < this.props.y + 1; y += 1) {
-            const rowData = this.state.data[y] || {}
+            const rowValues = this.state.values[y] || {}
+            const rowSelected = this.state.selected[y] || {}
             rows.push(
                 <Row
                     executeFormula={this.executeFormula}
-                    handleChangedCell={this.handleChangedCell}
+                    handleChangedCellValue={this.handleChangedCellValue} // Maybe these can get passed down in an object since they won't be changing -- or eliminated with REDUX
+                    handleChangedCellSelected={this.handleChangedCellSelected}
                     updateCells={this.updateCells}
                     key={y}
                     y={y}
                     x={this.props.x + 1}
-                    rowData={rowData}
+                    rowValues={rowValues}
+                    rowSelected={rowSelected}
                 />,
             )
         }
