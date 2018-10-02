@@ -13,9 +13,11 @@ const Row = (props) => {
                 x={x}
                 onChangedValue={props.handleChangedCellValue}
                 onChangedSelected={props.handleChangedCellSelected}
+                onChangedEditing={props.handleChangedCellEditing}
                 updateCells={props.updateCells}
                 value={props.rowValues[x] || ''}
                 selected={props.rowSelected[x]}
+                editing={props.rowEditing[x]}
                 executeFormula={props.executeFormula}
             />
         )
@@ -31,6 +33,7 @@ const Row = (props) => {
 Row.propsTypes = {
     handleChangedCellValue: PropTypes.func.isRequired,
     handleChangedCellSelected: PropTypes.func.isRequired,
+    handleChangedCellEditing: PropTypes.func.isRequired,
     executeFormula: PropTypes.func.isRequired,
     updateCells: PropTypes.func.isRequired,
     x: PropTypes.number.isRequired,
@@ -39,6 +42,9 @@ Row.propsTypes = {
         string: PropTypes.string,
     }).isRequired,
     rowSelected: PropTypes.shape({
+        string: PropTypes.bool,
+    }).isRequired,
+    rowEditing: PropTypes.shape({
         string: PropTypes.bool,
     }).isRequired
 }

@@ -11,6 +11,7 @@ export default class Cell extends Component {
         executeFormula: PropTypes.func.isRequired,
         onChangedValue: PropTypes.func.isRequired,
         onChangedSelected: PropTypes.func.isRequired,
+        onChangedEditing: PropTypes.func.isRequired,
         x: PropTypes.number.isRequired,
         y: PropTypes.number.isRequired,
         value: PropTypes.string.isRequired,
@@ -19,11 +20,12 @@ export default class Cell extends Component {
 
     static defaultProps = {
         selected: false,
+        editing: false,
     }
 
 
     state = {
-        editing: false,
+    //     editing: false,
         value: this.props.value,
     }
 
@@ -59,8 +61,12 @@ export default class Cell extends Component {
 
         // Its own state values changed? Update
         // Its own value prop changed? Update
+        // if (nextState.value !== this.state.value ||
+        //     nextState.editing !== this.state.editing ||
+        // Its own state values changed? Update
+        // Its own value prop changed? Update
         if (nextState.value !== this.state.value ||
-            nextState.editing !== this.state.editing ||
+            nextProps.editing !== this.props.editing ||
             nextProps.selected !== this.props.selected ||
             nextProps.value !== this.props.value) {
             return true
@@ -92,8 +98,10 @@ export default class Cell extends Component {
      * not yet in editing mode
      */
     onKeyPressOnSpan = () => {
+        const { x, y } = this.props
         if (!this.state.editing) {
-            this.setState({ editing: true })
+            this.setEditing(true)
+            // this.setState({ editing: true })
         }
     }
 
@@ -102,6 +110,8 @@ export default class Cell extends Component {
      */
     onBlur = (e) => {
         this.hasNewValue(e.target.value)
+        // this.props.onChangedEditing({ x, y }, true)  Do we need this here?  Trying without
+
     }
 
     /**
@@ -112,12 +122,19 @@ export default class Cell extends Component {
     hasNewValue = (value) => {
         const { x, y } = this.props
         this.props.onChangedValue({ x, y }, value)
-        this.setState({ editing: false })
+        this.setEditing(false)
     }
-
+    
     setSelected = (value) => {
         const { x, y } = this.props
         this.props.onChangedSelected({ x, y }, value)
+        this.setEditing(false)
+
+    }
+    
+    setEditing = (value) => {
+        const { x, y } = this.props
+        this.props.onChangedEditing({ x, y }, value)
     }
     
     /**
@@ -128,7 +145,7 @@ export default class Cell extends Component {
         this.timer = setTimeout(() => {
             if (!this.prevent) {
                 this.setSelected(true)
-                this.setState({ editing: false })
+                this.setEditing(false)
             }
             this.prevent = false
         }, this.delay)
@@ -142,7 +159,7 @@ export default class Cell extends Component {
         clearTimeout(this.timer)
         this.prevent = true
         this.setSelected(true)
-        this.setState({ editing: true })
+        this.setEditing(true)
     }
 
     determineDisplayValue = ({ x, y }, value) => {
@@ -216,7 +233,7 @@ export default class Cell extends Component {
           css.outlineStyle = 'dotted'
       }
 
-      if (this.state.editing) {
+      if (this.props.editing) {
           return (
             <input
                 style={css}

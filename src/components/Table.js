@@ -13,8 +13,9 @@ export default class Table extends Component {
     }
     
     state = {
-        values: {},
         selected: { 1: { 1: true }},
+        editing: {},
+        values: {},
         
     }
 
@@ -26,6 +27,10 @@ export default class Table extends Component {
     keydown = (e) => {
         console.log(e.keyCode)
         switch (e.keyCode) {
+            case 13:
+                e.preventDefault()
+                this.toggleEditing()                
+                break;        
             case 37:
                 e.preventDefault()
                 this.moveCursor(-1, 0)                
@@ -50,19 +55,29 @@ export default class Table extends Component {
     selectedArray = () => {
         const y = Object.keys(this.state.selected)[0]
         const x = Object.keys(this.state.selected[y])[0]
-        return [x, y]
+        return [parseInt(x), parseInt(y)]
+    }
+
+    editingArray = () => {
+        if (!Object.keys(this.state.editing).length)
+        const y = Object.keys(this.state.editing)[0] 
+        const x = Object.keys(this.state.editing[y])[0]
+        return [parseInt(x), parseInt(y)]
     }
 
     moveCursor = (xDiff, yDiff) => {
-        console.log(xDiff, yDiff);
-        
         const [oldX, oldY] = this.selectedArray()
-        console.log(oldX, oldY)
-        const [x, y] = [(parseInt(oldX) + parseInt(xDiff)), (parseInt(oldY) + parseInt(yDiff))]
-        console.log(x,y);
+        const [x, y] = [oldX + parseInt(xDiff), oldY + parseInt(yDiff)]
         // check valid new pos
         this.handleChangedCellSelected({ x, y }, true)
-
+        
+    }
+    
+    toggleEditing = () => {
+        debugger
+        const [x, y] = this.editingArray()
+        const { editing: { y: { x: editing }}} = this.state
+        this.handleChangedCellEditing({ x, y }, !editing)       
     }
 
     getCellValue = (cellCoord, done) => {
@@ -142,6 +157,12 @@ export default class Table extends Component {
         this.setState({ selected })
     }
 
+    handleChangedCellEditing = ({ x, y }, newEditing) => {
+        const editing = {}
+        editing[y] = {[x]: newEditing}
+        this.setState({ editing }, () => console.log(this.state))
+    }
+
     updateCells = () => {
         this.forceUpdate()
     }
@@ -171,17 +192,20 @@ export default class Table extends Component {
         for (let y = 0; y < this.props.y + 1; y += 1) {
             const rowValues = this.state.values[y] || {}
             const rowSelected = this.state.selected[y] || {}
+            const rowEditing = this.state.editing[y] || {}
             rows.push(
                 <Row
                     executeFormula={this.executeFormula}
                     handleChangedCellValue={this.handleChangedCellValue} // Maybe these can get passed down in an object since they won't be changing -- or eliminated with REDUX
                     handleChangedCellSelected={this.handleChangedCellSelected}
+                    handleChangedCellEditing={this.handleChangedCellEditing}
                     updateCells={this.updateCells}
                     key={y}
                     y={y}
                     x={this.props.x + 1}
                     rowValues={rowValues}
                     rowSelected={rowSelected}
+                    rowEditing={rowEditing}
                 />,
             )
         }
